@@ -1,5 +1,6 @@
 import jwt from "jsonwebtoken";
 import config from "../../config";
+import type { Request } from "express";
 
 export const verifyToken = (req: any, res: any, next: any) => {
   try {

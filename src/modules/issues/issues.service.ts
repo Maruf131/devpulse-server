@@ -201,9 +201,43 @@ const updateIssueIntoDB = async (id: string, payload: any, user: any) => {
   return result.rows[0];
 };
 
+// Delete Issues
+const deleteIssueFromDB = async (id: string, user: any) => {
+  // maintainer check
+  if (user.role !== "maintainer") {
+    throw new Error("Only maintainer can delete issues");
+  }
+
+  // check issue exists
+  const issueResult = await pool.query(
+    `
+      SELECT *
+      FROM issues
+      WHERE id = $1
+      `,
+    [id],
+  );
+
+  const issue = issueResult.rows[0];
+
+  if (!issue) {
+    throw new Error("Issue not found");
+  }
+
+  // delete issue
+  await pool.query(
+    `
+    DELETE FROM issues
+    WHERE id = $1
+    `,
+    [id],
+  );
+};
+
 export const IssueService = {
   createIssueIntoDB,
   getAllIssuesFromDB,
   getSingleIssueFromDB,
   updateIssueIntoDB,
+  deleteIssueFromDB,
 };
