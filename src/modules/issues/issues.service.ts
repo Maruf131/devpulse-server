@@ -30,36 +30,29 @@ const createIssueIntoDB = async (payload: any) => {
   return result.rows[0];
 };
 
-
+//get all the issues
 const getAllIssuesFromDB = async (query: any) => {
   const { sort, type, status } = query;
 
-  // base query
   let sql = `SELECT * FROM issues`;
 
   const conditions = [];
-
   const values: any[] = [];
 
   // type filter
   if (type) {
     values.push(type);
-
     conditions.push(`type = $${values.length}`);
   }
-
   // status filter
   if (status) {
     values.push(status);
-
     conditions.push(`status = $${values.length}`);
   }
 
-  // add WHERE
   if (conditions.length > 0) {
     sql += ` WHERE ` + conditions.join(" AND ");
   }
-
   // sorting
   if (sort === "oldest") {
     sql += ` ORDER BY created_at ASC`;
@@ -69,7 +62,6 @@ const getAllIssuesFromDB = async (query: any) => {
 
   // get issues
   const issueResult = await pool.query(sql, values);
-
   const issues = issueResult.rows;
 
   // get reporter ids
@@ -78,21 +70,13 @@ const getAllIssuesFromDB = async (query: any) => {
   // get users separately
   const userResult = await pool.query(
     `
-      SELECT
-      id,
-      name,
-      role
-
-      FROM users
-
-      WHERE id = ANY($1)
+      SELECT id, name, role FROM users WHERE id = ANY($1)
       `,
     [reporterIds],
   );
 
   const users = userResult.rows;
 
-  // merge reporter
   const finalData = issues.map((issue) => {
     const reporter = users.find((user) => user.id === issue.reporter_id);
 
@@ -111,8 +95,50 @@ const getAllIssuesFromDB = async (query: any) => {
   return finalData;
 };
 
+//get the single issue
+const getSingleIssueFromDB = async (id: any) => {
+  const issueResult = await pool.query(
+    `
+      SELECT *
+      FROM issues
+      WHERE id = $1
+      `,
+    [id],
+  );
+
+  const issue = issueResult.rows[0];
+
+  if (!issue) {
+    throw new Error("Issue not found");
+  }
+
+  // get reporter separately
+  const userResult = await pool.query(
+    `
+      SELECT id, name, role FROM users WHERE id = $1
+      `,
+    [issue.reporter_id],
+  );
+
+  const reporter = userResult.rows[0];
+
+  // final response
+  const finalData = {
+    id: issue.id,
+    title: issue.title,
+    description: issue.description,
+    type: issue.type,
+    status: issue.status,
+    reporter,
+    created_at: issue.created_at,
+    updated_at: issue.updated_at,
+  };
+
+  return finalData;
+};
 
 export const IssueService = {
   createIssueIntoDB,
-  getAllIssuesFromDB
+  getAllIssuesFromDB,
+  getSingleIssueFromDB,
 };
