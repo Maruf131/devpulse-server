@@ -137,8 +137,73 @@ const getSingleIssueFromDB = async (id: any) => {
   return finalData;
 };
 
+// Updated issues
+const updateIssueIntoDB = async (id: string, payload: any, user: any) => {
+  const issueResult = await pool.query(
+    `
+      SELECT *
+      FROM issues
+      WHERE id = $1
+      `,
+    [id],
+  );
+
+  const issue = issueResult.rows[0];
+
+  // issue not found
+  if (!issue) {
+    throw new Error("Issue not found");
+  }
+
+  /*
+    ACCESS RULES
+
+    Maintainer:
+    can update any issue
+
+    Contributor:
+    can update only own issue
+    AND status must be open
+  */
+
+  // contributor access check
+  if (user.role === "contributor") {
+    if (issue.reporter_id !== user.id) {
+      throw new Error("You can update only your own issue");
+    }
+
+    if (issue.status !== "open") {
+      throw new Error("You can update only open issues");
+    }
+  }
+
+  // update fields
+  const { title, description, type } = payload;
+
+  // update query
+  const result = await pool.query(
+    `
+      UPDATE issues
+
+      SET
+      title = COALESCE($1, title),
+      description = COALESCE($2, description),
+      type = COALESCE($3, type),
+      updated_at = CURRENT_TIMESTAMP
+
+      WHERE id = $4
+
+      RETURNING *
+      `,
+    [title, description, type, id],
+  );
+
+  return result.rows[0];
+};
+
 export const IssueService = {
   createIssueIntoDB,
   getAllIssuesFromDB,
   getSingleIssueFromDB,
+  updateIssueIntoDB,
 };

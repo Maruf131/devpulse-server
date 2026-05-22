@@ -9,5 +9,7 @@ const router = Router();
 router.post("/issues", verifyToken, issueController.createIssue);
 router.get("/issues", issueController.getAllIssues);
 router.get("/issues/:id", issueController.getSingleIssue);
+router.patch("/issues/:id", verifyToken, issueController.updateIssue
+);
 
 export const issueRoute = router;
